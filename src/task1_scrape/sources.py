@@ -19,11 +19,18 @@ BOOK_URLS = [
 ]
 
 CATALOG_URLS = [
-    # These subcategory pages contain actual book listings in HTML
+    # Lots of listings
+    "https://www.manning.com/catalog/software-development/cloud/data-engineering",  # multiple books visible
+    "https://www.manning.com/catalog/software-development/cloud/data-engineering/cloud-data-platforms",
+    "https://www.manning.com/catalog/software-development/cloud/data-engineering/big-data-processing",
+
+    # Extra backups (usually fewer, but helpful)
     "https://www.manning.com/catalog/software-development/cloud/data-engineering/cloud-data-engineering",
     "https://www.manning.com/catalog/software-development/databases/database-platforms/azure-data-engineering",
-    "https://www.manning.com/catalog/software-development/cloud/data-engineering/big-data-processing",
-    "https://www.manning.com/catalog/software-development/cloud/data-engineering/data-pipelines",
+
+    # If you still need more rows, pull from the Data Science → Data Engineering track too
+    "https://www.manning.com/catalog/data-science/data-engineering/data-management-and-organization",
 ]
+
 
 
