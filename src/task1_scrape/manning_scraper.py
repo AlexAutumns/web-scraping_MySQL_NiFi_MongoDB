@@ -20,7 +20,7 @@ HEADERS = {
 # Patterns
 YEAR_RE = re.compile(r"^(19|20)\d{2}$")                 # year is a standalone line like "2025"
 PRICE_LINE_RE = re.compile(r"^([$£€])\s*([0-9]+(?:\.[0-9]{2})?)$")  # price on its own line like "$47.99"
-RATINGCOUNT_RE = re.compile(r"^\((\d+)\)$")             # "(4)"
+RATINGCOUNT_RE = re.compile(r"\(\s*(\d+)\s*\)")  # matches "(4)", "( 4 )", "(4 reviews)" etc.
 
 # Lines to ignore as "not titles"
 NOISE = {
@@ -30,6 +30,41 @@ NOISE = {
     "Databases", "Database Platforms",
 }
 NOISE_LOWER = {s.lower() for s in NOISE}
+
+DEBUG = False  # set True to enable detailed per-row logs
+
+def _dbg_print_row(
+    title: str,
+    authors: Optional[str],
+    year: Optional[int],
+    prices: list[float],
+    price: Optional[float],
+    star_rating: Optional[float],
+    catalog_url: str,
+    year_idx: int,
+    idx_after_scan: int,
+    lines: list[str],
+) -> None:
+    """Pretty debug output for one listing."""
+    # Show a compact window around the parsed block to diagnose parsing issues.
+    start = max(year_idx - 4, 0)
+    end = min(year_idx + 12, len(lines))
+    window = lines[start:end]
+
+    print("\n" + "=" * 70)
+    print("[ROW DEBUG]")
+    print(f"Title      : {title!r}")
+    print(f"Authors    : {authors!r}")
+    print(f"Year       : {year!r}")
+    print(f"Prices(raw): {prices!r}  -> chosen: {price!r}")
+    print(f"Rating(cnt): {star_rating!r}")
+    print(f"Source URL : {catalog_url}")
+    print(f"year_idx   : {year_idx} | idx(after scan): {idx_after_scan}")
+    print("-" * 70)
+    print("[CONTEXT WINDOW]")
+    for w in window:
+        print("  ", w)
+    print("=" * 70)
 
 
 def fetch_html(url: str, timeout: int = 30) -> str:
@@ -173,12 +208,18 @@ def parse_manning_catalog(html: str, catalog_url: str) -> list[dict[str, Any]]:
 
         price = prices[-1]  # pick latest/discounted if multiple
 
-        # Rating count can appear right after prices
+        # Rating count is OPTIONAL and its position can vary.
+        # Sometimes it appears immediately after the prices, but other times there may be
+        # extra lines (e.g., a stray "1" or layout text) before "(4)".
+        # We'll scan a small window after the prices and pick the first match.
         star_rating = None
-        if idx < n and _is_ratingcount_line(lines[idx]):
-            m = RATINGCOUNT_RE.match(lines[idx].strip())
+        rating_scan_start = year_idx + 1
+        rating_scan_end = min(year_idx + 15, n)
+        for r_i in range(rating_scan_start, rating_scan_end):
+            m = RATINGCOUNT_RE.search(lines[r_i])
             if m:
-                star_rating = float(m.group(1))
+                star_rating = float(m.group(1))  # review count shown in parentheses
+                break
 
         # Final validation
         if not authors:
@@ -190,6 +231,21 @@ def parse_manning_catalog(html: str, catalog_url: str) -> list[dict[str, Any]]:
             continue
         seen_titles.add(title)
 
+        if DEBUG:
+            _dbg_print_row(
+                title=title,
+                authors=authors,
+                year=year,
+                prices=prices,
+                price=price,
+                star_rating=star_rating,
+                catalog_url=catalog_url,
+                year_idx=year_idx,
+                idx_after_scan=idx,
+                lines=lines,
+            )
+
+    
         rows.append({
             "title": title,
             "authors": authors,
