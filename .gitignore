@@ -22,12 +22,20 @@ Thumbs.db
 .ipynb_checkpoints/
 
 # --- Data outputs (don’t commit generated data unless you want to) ---
-# data/raw/
-# data/processed/
-# data/exports/
+data/raw/*
+data/processed/*
+data/exports/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/exports/.gitkeep
 
-# --- Reports / screenshots (optional; keep if you want evidence in repo) ---
-report_assets/screenshots/
+# --- NiFi exports (Task 3 outputs) ---
+nifi/*.json
+nifi/*.ndjson
+nifi/*.csv
+nifi/*.avro
+nifi/*.parquet
+nifi/*.gz
 
 # --- Secrets ---
 .env

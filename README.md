@@ -18,6 +18,13 @@ This repository is a **step-by-step** workflow for Coursework 1. It is written s
   - [7C. Required SQL queries (3 columns + sort)](#7c-required-sql-queries-3-columns--sort)
   - [7D. Database schema diagram (draw.io)](#7d-database-schema-diagram-drawio)
 - [8. Task 3 — Apache NiFi export (MySQL → local disk)](#8-task-3--apache-nifi-export-mysql--local-disk)
+  - [8.1 What you will build](#81-what-you-will-build)
+  - [8.2 NiFi installation (Windows)](#82-nifi-installation-windows)
+  - [8.3 Add MySQL JDBC driver (Connector/J)](#83-add-mysql-jdbc-driver-connectorj)
+  - [8.4 Create the NiFi flow (beginner step-by-step)](#84-create-the-nifi-flow-beginner-step-by-step)
+  - [8.5 Run it once (or stop it when you need to)](#85-run-it-once-or-stop-it-when-you-need-to)
+  - [8.6 What to record for your Task 3 video](#86-what-to-record-for-your-task-3-video)
+  - [8.7 Common errors and fixes](#87-common-errors-and-fixes)
 - [9. Task 4 — MongoDB integration (next)](#9-task-4--mongodb-integration-next)
 - [10. End-to-end testing checklist](#10-end-to-end-testing-checklist)
 - [11. Troubleshooting](#11-troubleshooting)
@@ -49,7 +56,7 @@ Coursework tasks (as required in the spec):
 ├─ notebooks/
 │  ├─ 01_task1_web_scrape_manning.ipynb
 │  └─ 02_task2_mysql_create_import_query.ipynb
-├─ nifi/                        # NiFi notes/templates (Task 3)
+├─ nifi/                        # NiFi output folder for Task 3 (JSON exports)
 ├─ scripts/                     # optional .bat runners (Windows)
 ├─ src/
 │  ├─ task1_scrape/             # Manning scraper + runner
@@ -79,8 +86,9 @@ Recommended for this CW setup: **XAMPP**.
 - Open phpMyAdmin: `http://localhost/phpmyadmin`
 
 ### 3.3 Apache NiFi (Task 3)
-- NiFi **2.6** installed and running
-- MySQL JDBC driver (MySQL Connector/J JAR)
+- Apache NiFi **2.7.x** (this project tested with **2.7.2**)
+- **Java 21** recommended for NiFi 2.x
+- MySQL JDBC driver (MySQL Connector/J `.jar`)
 
 ### 3.4 MongoDB (Task 4)
 - MongoDB Community Server (local) or MongoDB Atlas
@@ -126,7 +134,8 @@ Open and run these in order:
 1. `notebooks/01_task1_web_scrape_manning.ipynb`  
 2. `notebooks/02_task2_mysql_create_import_query.ipynb`
 
-Each notebook is designed to mirror what the `.py` scripts do, but in a “coursework-friendly” format with markdown titles and clear output cells.
+> **Notebook path tip:** In VS Code/Jupyter, the working directory is often `notebooks/`.  
+> That’s why notebook paths use `../data/...` and `.env` should be loaded from `../.env`.
 
 ---
 
@@ -154,9 +163,6 @@ python -c "import pandas as pd; df=pd.read_csv('data/processed/books.csv'); prin
 ```
 You need **at least 15 rows**.
 
-### Where URLs/sources are defined
-- `src/task1_scrape/sources.py`
-
 ---
 
 ## 7. Task 2 — MySQL database + CSV import
@@ -172,8 +178,6 @@ Open **XAMPP Control Panel**:
 ---
 
 ## 7A. UI Method (phpMyAdmin)
-
-This section is fully “UI-first” (create DB in phpMyAdmin, create table using the SQL tab, and import CSV in the Import tab).
 
 ### Step A1 — Create a database using the UI
 1. Go to phpMyAdmin: `http://localhost/phpmyadmin`
@@ -203,16 +207,14 @@ CREATE TABLE books_import_ui (
 2. Click **Import**
 3. Choose file: `data/processed/books.csv`
 4. Format: **CSV**
-5. Typical settings (may vary by phpMyAdmin version):
+5. Typical settings:
    - Column separator: `,`
    - Enclosure: `"`
    - Escape: `\`
-   - If there is an option: **“The first line of the file contains the table column names”** → enable it
+   - Enable: **first line contains column names** (if available)
 6. Click **Import**
 
 ### Step A4 — Verify the import
-Run in **SQL** tab:
-
 ```sql
 SELECT COUNT(*) AS row_count
 FROM books_import_ui;
@@ -221,11 +223,6 @@ FROM books_import_ui;
 ---
 
 ## 7B. Code Method (repeatable)
-
-This method uses Python to:
-- connect to MySQL
-- create the database/table if needed
-- import the CSV reliably
 
 ### Step B1 — Create a `.env` file (project root)
 Create a file named `.env` in the project root (this should NOT be committed to git):
@@ -238,15 +235,11 @@ DB_PASSWORD=
 DB_NAME=module15_cw1_de
 ```
 
-> In XAMPP, the default is usually `root` with an empty password.  
-> If you changed it, set `DB_PASSWORD` accordingly.
-
 ### Step B2 — Run Task 2 from the notebook
 Run:
 - `notebooks/02_task2_mysql_create_import_query.ipynb`
 
 ### Step B3 — OR run Task 2 from the script
-**Primary (code-created) database + import:**
 ```powershell
 python -m src.task2_sql.run_task2_all
 ```
@@ -255,17 +248,6 @@ This creates/imports into:
 - DB (default): `module15_cw1_de_py`
 - Table (default): `books_import_py`
 
-**Also import into your UI DB from `.env`:**
-```powershell
-python -m src.task2_sql.run_task2_all --also-ui
-```
-
-**Change database/table names (optional):**
-```powershell
-python -m src.task2_sql.run_task2_all --primary-db module15_cw1_de_py --table books_import_py
-python -m src.task2_sql.run_task2_all --also-ui --ui-db module15_cw1_de --table books_import_py
-```
-
 ---
 
 ## 7C. Required SQL queries (3 columns + sort)
@@ -273,35 +255,28 @@ python -m src.task2_sql.run_task2_all --also-ui --ui-db module15_cw1_de --table 
 The coursework requires:  
 ✅ “Extract only 3 columns and sort the table based on any column.”
 
-Run these in phpMyAdmin → **SQL** tab (choose the correct table name):
+Examples:
 
-### 1) Count rows
 ```sql
 SELECT COUNT(*) AS row_count
 FROM books_import_py;
 ```
 
-### 2) Select 3 columns + sort by price (descending)
 ```sql
 SELECT title, authors, price
 FROM books_import_py
 ORDER BY price DESC;
 ```
 
-### 3) Select 3 columns + sort by year then price
 ```sql
 SELECT title, year, price
 FROM books_import_py
 ORDER BY year DESC, price DESC;
 ```
 
-> If you used the UI table instead, replace `books_import_py` with `books_import_ui`.
-
 ---
 
 ## 7D. Database schema diagram (draw.io)
-
-The spec asks you to draw the table structure in **draw.io** (diagrams.net).
 
 Suggested schema (single table):
 
@@ -313,81 +288,278 @@ Suggested schema (single table):
 - price (DECIMAL(10,2))
 - source_url (TEXT)
 
-In draw.io:
-1. Create a new diagram → choose **Entity Relation** or **Database** shapes
-2. Add one entity/table box
-3. Add attributes as above
-4. Export as PNG/PDF for your report
-
 ---
 
 ## 8. Task 3 — Apache NiFi export (MySQL → local disk)
 
-Goal: extract data stored in MySQL and save it to local disk as **JSON** (recommended) or CSV.
+### 8.1 What you will build
 
-### 8.1 Prerequisites checklist
-- NiFi **2.6** installed and running
-- MySQL is running (XAMPP)
-- MySQL Connector/J JAR copied into: `NIFI_HOME/lib/`
-- Restart NiFi after adding the JAR
+Goal: extract the data stored in MySQL and export it to a **local JSON file**.
 
-### 8.2 Suggested NiFi flow (simple + coursework-friendly)
+We will build this simple flow (beginner-friendly and coursework-friendly):
 
-**Processors:**
-`ExecuteSQLRecord → UpdateAttribute → PutFile`
+**ExecuteSQLRecord → UpdateAttribute → PutFile**
 
-#### Step 1 — Create a Process Group
-- Name: `Task 3 – MySQL to JSON Extract`
+- **ExecuteSQLRecord**: runs `SELECT * FROM books_import_py;`
+- **UpdateAttribute**: sets `filename` to a timestamped value
+- **PutFile**: writes the JSON file into your repo folder `./nifi/`
 
-#### Step 2 — Add processors inside the group
-- ExecuteSQLRecord
-- UpdateAttribute
-- PutFile
+---
 
-#### Step 3 — Configure ExecuteSQLRecord
-Key properties:
-- **Database Connection Pooling Service**: create **DBCPConnectionPool**
-- **SQL Select Query**: choose the table you imported into, e.g.
+### 8.2 NiFi installation (Windows)
 
-```sql
-SELECT * FROM books_import_py;
+#### Step 1 — Install Java (important)
+NiFi 2.x works best with **Java 21**.
+
+Confirm your Java version:
+```powershell
+java -version
 ```
 
-- **Record Writer**: create **JsonRecordSetWriter**  
-  Suggested writer settings:
-  - Pretty Print JSON: `true`
-  - Output Records Per FlowFile: `Single JSON Array`
-  - Character Set: `UTF-8`
+#### Step 2 — Extract NiFi
+Extract NiFi somewhere simple, example:
+```
+C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\
+```
 
-#### Step 4 — Configure DBCPConnectionPool (Controller Service)
-Typical values:
-- Database Connection URL: `jdbc:mysql://localhost:3306/module15_cw1_de_py`
-- Driver Class Name: `com.mysql.cj.jdbc.Driver`
-- Driver Location(s): path to the JAR (example) `C:\nifi\lib\mysql-connector-j-8.1.0.jar`
-- Database User: `root`
-- Password: (your MySQL password)
+#### Step 3 — Start NiFi (Windows)
+Open a terminal in:
+```
+C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\bin
+```
 
-Enable the service.
+Start:
+```bat
+nifi.cmd start
+```
 
-#### Step 5 — Configure UpdateAttribute
-Add attribute:
-- `filename` = `books_${now():format("yyyyMMdd_HHmmss")}.json`
+Check status:
+```bat
+nifi.cmd status
+```
 
-#### Step 6 — Configure PutFile
-- Directory: create a folder named (example)  
-  `C:\Data Engineering extract`
-- Create Missing Directories: `true`
-- Conflict Resolution Strategy: `replace`
+Stop:
+```bat
+nifi.cmd stop
+```
 
-#### Step 7 — Run Once + verify output
-1. Start processors in order: ExecuteSQLRecord → UpdateAttribute → PutFile
-2. Right-click **ExecuteSQLRecord** → **Run Once**
-3. Check your output folder for a JSON file like:  
-   `books_20250130_162201.json`
+#### Step 4 — Open the NiFi UI
+Open:
+```
+https://localhost:8443/nifi
+```
 
-**Video tip (Task 3 submission):**
-- Record your screen + keep your camera ON (as required)
-- Show: NiFi UI, processor configs, “Run Once”, and the output file opening
+**“Not Secure” warning is normal** (self-signed certificate on localhost).  
+Click **Advanced → Proceed**.
+
+#### Step 5 — Login credentials
+On first run NiFi generates credentials.  
+Open the log file and search for the generated username/password:
+```
+C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\logs\nifi-app.log
+```
+
+> **Antivirus note (Avast / IDP.Generic):** Some antivirus tools flag NiFi as a generic risk because it runs a local server.  
+> If you downloaded NiFi from Apache and it gets quarantined, restore it and add an exception for your NiFi folder.
+
+---
+
+### 8.3 Add MySQL JDBC driver (Connector/J)
+
+NiFi needs the MySQL JDBC `.jar` to connect to MySQL.
+
+#### Step 1 — Download MySQL Connector/J jar
+Example jar name:
+- `mysql-connector-j-9.6.0.jar`
+
+#### Step 2 — Copy jar into NiFi lib folder
+Copy the jar into:
+```
+C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\lib\
+```
+
+Example full path:
+```
+C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\lib\mysql-connector-j-9.6.0.jar
+```
+
+#### Step 3 — Restart NiFi
+After adding the jar, restart NiFi:
+```bat
+nifi.cmd stop
+nifi.cmd start
+```
+
+---
+
+### 8.4 Create the NiFi flow (beginner step-by-step)
+
+#### Step 1 — Confirm MySQL is running
+Start MySQL in XAMPP and verify your table exists, e.g. in phpMyAdmin:
+```sql
+SELECT COUNT(*) FROM books_import_py;
+```
+
+#### Step 2 — Create a Process Group
+On the NiFi canvas:
+- Drag **Process Group** onto the canvas
+- Name: `CW1 Task3 - MySQL Export`
+- Double-click it to go inside
+
+#### Step 3 — Add processors (drag-and-drop)
+In the left “Components” panel:
+- Drag **Processor** onto the canvas (3 times)
+
+Choose these processors:
+1. `ExecuteSQLRecord`
+2. `UpdateAttribute`
+3. `PutFile`
+
+Arrange left → right.
+
+#### Step 4 — Connect processors (success)
+Draw connections:
+- ExecuteSQLRecord → UpdateAttribute (relationship: **success**)
+- UpdateAttribute → PutFile (relationship: **success**)
+
+#### Step 5 — Configure PutFile (save into repo folder)
+Right-click **PutFile** → Configure → Properties:
+
+- Directory:
+  ```
+  C:\Users\Lenovo\Documents\Program Projects\EDUCLASS\MODULE 15 Data Engineering\COURSEWORK\CW1\Project\nifi
+  ```
+- Create Missing Directories = `true`
+- Conflict Resolution Strategy = `replace` (recommended during testing)
+
+Apply.
+
+#### Step 6 — Configure UpdateAttribute (filename)
+Right-click **UpdateAttribute** → Configure → Properties:
+
+Add property:
+- filename:
+  ```
+  books_${now():format("yyyyMMdd_HHmmss")}.json
+  ```
+
+Apply.
+
+#### Step 7 — Configure ExecuteSQLRecord (SQL + JSON writer + DB connection)
+Right-click **ExecuteSQLRecord** → Configure → Properties:
+
+- SQL Query:
+  ```sql
+  SELECT * FROM books_import_py;
+  ```
+
+Create controller services:
+- Database Connection Pooling Service → **Create new service** → `DBCPConnectionPool`
+- Record Writer → **Create new service** → `JsonRecordSetWriter`
+
+Apply.
+
+#### Step 8 — Configure & Enable DBCPConnectionPool (MySQL)
+Open the controller service and set:
+
+- Database Connection URL:
+  ```
+  jdbc:mysql://localhost:3306/module15_cw1_de_py?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+  ```
+- Database Driver Class Name:
+  ```
+  com.mysql.cj.jdbc.Driver
+  ```
+- Database Driver Location(s):
+  ```
+  C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\lib\mysql-connector-j-9.6.0.jar
+  ```
+- Database User:
+  ```
+  root
+  ```
+- Password: (blank if XAMPP default)
+
+Apply → **Enable**.
+
+#### Step 9 — Configure & Enable JsonRecordSetWriter
+Set:
+- Pretty Print JSON = `true`
+- (Optional) Output grouping = Single JSON Array (if available)
+
+Apply → **Enable**.
+
+#### Step 10 — Auto-terminate the failure relationship
+ExecuteSQLRecord will complain unless you handle `failure`.
+
+Right-click **ExecuteSQLRecord** → Configure → Settings:
+- Auto-terminate relationships: ✅ `failure`
+
+Apply.
+
+---
+
+### 8.5 Run it once (or stop it when you need to)
+
+NiFi can run on a schedule, so you might see it exporting repeatedly.
+
+**Easy method (recommended for beginners):**
+- Start the processors
+- Wait for one JSON file to appear
+- Stop ExecuteSQLRecord when you’re done
+
+#### Start order
+Start (play button) in this order:
+1. PutFile
+2. UpdateAttribute
+3. ExecuteSQLRecord
+
+#### Output check
+Open:
+```
+.\nifi\
+```
+
+You should see files like:
+- `books_20260131_174210.json`
+
+> If you want it to run less often:
+> ExecuteSQLRecord → Configure → Scheduling → increase “Run Schedule” (e.g., `60 sec`).
+
+---
+
+### 8.6 What to record for your Task 3 video
+
+Show these steps clearly:
+
+1. **MySQL table exists** (phpMyAdmin: `SELECT COUNT(*) FROM books_import_py;`)
+2. NiFi canvas with the full flow: ExecuteSQLRecord → UpdateAttribute → PutFile
+3. ExecuteSQLRecord configuration:
+   - SQL Query
+   - DBCPConnectionPool enabled
+   - JsonRecordSetWriter enabled
+4. PutFile directory (inside your repo)
+5. Start the flow and show the JSON file created
+6. Open the JSON output file to prove it contains the data
+
+---
+
+### 8.7 Common errors and fixes
+
+**“Not secure” on https://localhost:8443/nifi**  
+- Normal for localhost (self-signed cert). Proceed anyway.
+
+**Controller Service cannot enable**
+- Check MySQL is running in XAMPP
+- Check jar path is correct and NiFi was restarted after adding jar
+- Driver class must be: `com.mysql.cj.jdbc.Driver`
+- DB name in URL must match your database exactly
+
+**ExecuteSQLRecord says failure relationship not connected**
+- Auto-terminate relationship: `failure` (Settings tab)
+
+**It exports every second**
+- Stop ExecuteSQLRecord when finished, or increase “Run Schedule”
 
 ---
 
@@ -396,54 +568,38 @@ Add attribute:
 Planned steps:
 1. Convert `data/processed/books.csv` → `books.json`
 2. Import JSON into MongoDB
-3. Query MongoDB (filter by price/year, sort, etc.)
+3. Query MongoDB (filter/sort)
 4. Compare query execution time vs MySQL (simple benchmark)
-
-> Note: `src/task4_mongo/` currently contains placeholders and will be implemented in Task 4.
 
 ---
 
 ## 10. End-to-end testing checklist
 
-Use this to test from scratch (the README is designed to be your test plan):
-
 1. Create `.venv` and install requirements  
 2. Start XAMPP (Apache + MySQL)  
 3. Run **Task 1 notebook** → confirm `data/processed/books.csv` exists and has ≥ 15 rows  
-4. Create DB in phpMyAdmin (UI) OR create `.env` (code method)  
-5. Run **Task 2 notebook** → confirm table exists and has rows  
-6. Run SQL verification queries (3 columns + sorting)  
-7. (Later) Build NiFi flow and export JSON to local disk  
-8. (Later) Convert CSV → JSON and import to MongoDB; query + compare execution times  
+4. Run **Task 2 notebook** → confirm DB/table exists and has rows  
+5. Run SQL verification queries (3 columns + sorting)  
+6. Build NiFi flow and export JSON into `./nifi/`  
+7. (Later) Convert CSV → JSON and import to MongoDB; query + compare execution times  
 
 ---
 
 ## 11. Troubleshooting
 
-### Jupyter kernel missing
-Re-run:
-```powershell
-python -m ipykernel install --user --name cw1-de --display-name "CW1 Data Engineering (.venv)"
-```
-
-### MySQL connection fails (Access denied)
-- Ensure MySQL is running in XAMPP
-- Check `.env` values (host/port/user/password)
-- In phpMyAdmin, verify the user credentials you expect
-
 ### CSV import issues in phpMyAdmin
-If UI import fails or columns misalign, use the **code method**:
+If UI import fails or columns misalign, use the code method:
 ```powershell
 python -m src.task2_sql.run_task2_all --also-ui
 ```
 
-### Task 1 returns fewer than 15 rows
-- Re-run Task 1 (site pages can change)
-- Verify your internet connection
-- Check `src/task1_scrape/sources.py` if you changed URLs
+### MySQL connection fails
+- Ensure MySQL is running in XAMPP
+- Check username/password
+- Verify DB name and table name exist
 
 ---
 
 ### Academic integrity reminder
-Keep your code well-commented and screenshot your outputs (Task 1 & 2).  
+Keep your code well-commented and screenshot your outputs (Task 1–3).  
 If you borrow code/ideas, reference the source in your report.
