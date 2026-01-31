@@ -52,19 +52,24 @@ Coursework tasks (as required in the spec):
 .
 ├─ data/
 │  ├─ raw/                      # intermediate scrape outputs
-│  └─ processed/                # final CW1 CSV output (Task 1)
+│  ├─ processed/                # final CW1 CSV output (Task 1)
+│  └─ exports/                  # JSON exports for MongoDB (Task 4)
 ├─ notebooks/
 │  ├─ 01_task1_web_scrape_manning.ipynb
-│  └─ 02_task2_mysql_create_import_query.ipynb
+│  ├─ 02_task2_mysql_create_import_query.ipynb
+│  └─ 03_task4_mongodb_compass_and_benchmark.ipynb
 ├─ nifi/                        # NiFi output folder for Task 3 (JSON exports)
 ├─ scripts/                     # optional .bat runners (Windows)
 ├─ src/
 │  ├─ task1_scrape/             # Manning scraper + runner
 │  ├─ task2_sql/                # DB schema + CSV import + runner
-│  └─ task4_mongo/              # placeholders (will be implemented in Task 4)
+│  └─ task4_mongo/              # Task 4 helpers (CSV→JSON, benchmark)
+│     ├─ csv_to_json.py
+│     └─ benchmark.py
 ├─ requirements.txt
 └─ README.md
 ```
+
 
 ---
 
@@ -91,8 +96,8 @@ Recommended for this CW setup: **XAMPP**.
 - MySQL JDBC driver (MySQL Connector/J `.jar`)
 
 ### 3.4 MongoDB (Task 4)
-- MongoDB Community Server (local) or MongoDB Atlas
-- MongoDB Compass is optional (GUI)
+- MongoDB Community Server (local)
+- MongoDB Compass (GUI) — **we use Compass for all MongoDB steps**
 
 ---
 
@@ -106,24 +111,24 @@ py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 4.2 Check if using the venv in Python
-```powershell
-python -c "import sys; print(sys.executable)"
-```
-
-### 4.3 Upgrade pip + install dependencies
+### 4.2 Upgrade pip + install dependencies
 ```powershell
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4.4 (Recommended) Register the venv as a Jupyter kernel
+> For Task 4, ensure `pymongo` is installed:
+> ```powershell
+> pip install pymongo
+> ```
+
+### 4.3 (Recommended) Register the venv as a Jupyter kernel
 This makes your notebook run with the same packages you installed:
 ```powershell
 python -m ipykernel install --user --name cw1-de --display-name "CW1 Data Engineering (.venv)"
 ```
 
-### 4.5 Start Jupyter
+### 4.4 Start Jupyter
 ```powershell
 jupyter lab
 ```
@@ -568,15 +573,158 @@ Show these steps clearly:
 
 ---
 
-## 9. Task 4 — MongoDB integration (next)
+## 9. Task 4 — MongoDB (CSV → JSON → Compass import → Queries → Timing)
 
-Planned steps:
-1. Convert `data/processed/books.csv` → `books.json`
-2. Import JSON into MongoDB
-3. Query MongoDB (filter/sort)
-4. Compare query execution time vs MySQL (simple benchmark)
+Task 4 requirements (from the coursework spec):
+- Convert the Task 1 dataset to **JSON**
+- Import JSON into **MongoDB**
+- Run MongoDB queries (filter/retrieve/sort)
+- Compare **query execution time** between **MongoDB** and **MySQL**
+- Include screenshots + a written comparison in your report
+
+This repo supports a **Compass-only** MongoDB workflow (no CLI tools needed).
 
 ---
+
+### 9.1 Install MongoDB Community Server + Compass (Windows)
+
+1. Download **MongoDB Community Server** (includes Compass option).
+2. During installation:
+   - Install MongoDB as a **Windows Service**
+   - Install **MongoDB Compass**
+3. Launch **MongoDB Compass**
+4. Connect with the default local URI:
+   ```
+   mongodb://localhost:27017
+   ```
+
+If Compass connects successfully, MongoDB is running.
+
+---
+
+### 9.2 Convert CSV → JSON (Python)
+
+**Input:** `data/processed/books.csv`  
+**Outputs:**  
+- `data/exports/books.json` (JSON array)  
+- `data/exports/books.ndjson` (newline-delimited JSON)
+
+> Why two outputs? Compass can import either JSON array or NDJSON.
+
+#### Option A — Notebook (recommended)
+Run:
+- `notebooks/03_task4_mongodb_compass_and_benchmark.ipynb`
+
+This notebook writes the JSON files to `data/exports/`.
+
+#### Option B — Script (repeatable, robust paths)
+Create/update this file:
+- `src/task4_mongo/csv_to_json.py`
+
+Run from the **project root**:
+```powershell
+python -m src.task4_mongo.csv_to_json
+```
+
+✅ This script is designed to work regardless of your working directory (it finds the project root automatically).
+
+If you need to explicitly set paths:
+```powershell
+python -m src.task4_mongo.csv_to_json --csv "data/processed/books.csv" --out_dir "data/exports"
+```
+
+---
+
+### 9.3 Import JSON into MongoDB Compass
+
+We will import into:
+- Database: `cw1_de`
+- Collection: `books`
+
+Steps:
+1. In Compass, connect to `mongodb://localhost:27017`
+2. Click **Create database**
+   - Database Name: `cw1_de`
+   - Collection Name: `books`
+3. Open `cw1_de.books`
+4. Click **Import Data**
+5. Choose file:
+   - `data/exports/books.json` (recommended)
+6. Import
+
+Verification:
+- Go to **Documents** tab
+- Confirm the document count ≈ CSV rows
+- Click a document and confirm fields exist:
+  - `title`, `authors`, `year`, `star_rating`, `price`, `source_url`
+
+---
+
+### 9.4 MongoDB queries (run inside Compass)
+
+In Compass, open `cw1_de.books` → **Documents** tab.
+
+Use the **Filter** and **Sort** boxes.
+
+#### Query A — price ≥ 30, sort by price descending
+Filter:
+```json
+{ "price": { "$gte": 30 } }
+```
+Sort:
+```json
+{ "price": -1 }
+```
+
+#### Query B — year ≥ 2020, sort by year descending
+Filter:
+```json
+{ "year": { "$gte": 2020 } }
+```
+Sort:
+```json
+{ "year": -1 }
+```
+
+#### Query C — title contains “data” (case-insensitive)
+Filter:
+```json
+{ "title": { "$regex": "data", "$options": "i" } }
+```
+
+---
+
+### 9.5 Query execution time comparison (MongoDB vs MySQL)
+
+For coursework evidence, a simple and fair comparison is:
+- **same filter condition** (e.g., price ≥ 30)
+- **same sort** (price descending)
+- measure elapsed time in Python
+
+#### Option A — Notebook (included)
+Use the bottom section of:
+- `notebooks/03_task4_mongodb_compass_and_benchmark.ipynb`
+
+#### Option B — Script (recommended for repeatable timing)
+Create/update:
+- `src/task4_mongo/benchmark.py`
+
+Install dependency (once):
+```powershell
+pip install pymongo
+```
+
+Run:
+```powershell
+python -m src.task4_mongo.benchmark --min_price 30
+```
+
+The benchmark prints:
+- MySQL time + rows returned
+- MongoDB time + rows returned
+
+> Tip: For a more stable comparison, run the benchmark 3 times and take the average (optional).
+
 
 ## 10. End-to-end testing checklist
 
@@ -586,7 +734,9 @@ Planned steps:
 4. Run **Task 2 notebook** → confirm DB/table exists and has rows  
 5. Run SQL verification queries (3 columns + sorting)  
 6. Build NiFi flow and export JSON into `./nifi/`  
-7. (Later) Convert CSV → JSON and import to MongoDB; query + compare execution times  
+7. Run Task 4: CSV → JSON export into `data/exports/`  
+8. Import JSON into MongoDB (Compass) and run MongoDB queries  
+9. Run timing comparison (MySQL vs MongoDB) and capture results  
 
 ---
 
@@ -603,8 +753,4 @@ python -m src.task2_sql.run_task2_all --also-ui
 - Check username/password
 - Verify DB name and table name exist
 
----
 
-### Academic integrity reminder
-Keep your code well-commented and screenshot your outputs (Task 1–3).  
-If you borrow code/ideas, reference the source in your report.
