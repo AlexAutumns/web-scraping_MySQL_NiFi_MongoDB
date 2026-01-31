@@ -106,19 +106,24 @@ py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 4.2 Upgrade pip + install dependencies
+### 4.2 Check if using the venv in Python
+```powershell
+python -c "import sys; print(sys.executable)"
+```
+
+### 4.3 Upgrade pip + install dependencies
 ```powershell
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4.3 (Recommended) Register the venv as a Jupyter kernel
+### 4.4 (Recommended) Register the venv as a Jupyter kernel
 This makes your notebook run with the same packages you installed:
 ```powershell
 python -m ipykernel install --user --name cw1-de --display-name "CW1 Data Engineering (.venv)"
 ```
 
-### 4.4 Start Jupyter
+### 4.5 Start Jupyter
 ```powershell
 jupyter lab
 ```
