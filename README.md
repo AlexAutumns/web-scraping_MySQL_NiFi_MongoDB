@@ -1,4 +1,4 @@
-# CW1 Data Engineering (CMP020X304S)  
+# CW1 Data Engineering 
 **Web Scraping → CSV → MySQL → NiFi Export → MongoDB (Task 4 later)**
 
 This repository is a **step-by-step** workflow for Coursework 1. It is written so that a beginner can start from zero, run the notebooks/scripts, and verify each task output.
