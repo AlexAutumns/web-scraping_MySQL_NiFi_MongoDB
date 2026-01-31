@@ -9,9 +9,6 @@ Why two?
 - Compass can import JSON array OR NDJSON
 - NDJSON is also compatible with mongoimport
 
-Where to put this file in your repo:
-    src/task4_mongo/csv_to_json.py
-
 Run (from project root):
     python -m src.task4_mongo.csv_to_json
 

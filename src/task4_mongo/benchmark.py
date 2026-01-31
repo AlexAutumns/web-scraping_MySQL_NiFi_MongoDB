@@ -10,12 +10,6 @@ Assumptions:
 
 You can change these via arguments.
 
-Prereqs:
-    pip install pymongo mysql-connector-python pandas
-
-Where to put this file in your repo:
-    src/task4_mongo/benchmark.py
-
 Run (from project root):
     python -m src.task4_mongo.benchmark --min_price 30
 
