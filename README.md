@@ -329,13 +329,13 @@ java -version
 #### Step 2 — Extract NiFi
 Extract NiFi somewhere simple, example:
 ```
-C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\
+<NIFI_HOME>\nifi-2.7.2\
 ```
 
 #### Step 3 — Start NiFi (Windows)
 Open a terminal in:
 ```
-C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\bin
+<NIFI_HOME>\nifi-2.7.2\bin
 ```
 
 Start:
@@ -366,7 +366,7 @@ Click **Advanced → Proceed**.
 On first run NiFi generates credentials.  
 Open the log file and search for the generated username/password:
 ```
-C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\logs\nifi-app.log
+<NIFI_HOME>\nifi-2.7.2\logs\nifi-app.log
 ```
 
 > **Antivirus note (Avast / IDP.Generic):** Some antivirus tools flag NiFi as a generic risk because it runs a local server.  
@@ -385,12 +385,12 @@ Example jar name:
 #### Step 2 — Copy jar into NiFi lib folder
 Copy the jar into:
 ```
-C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\lib\
+<NIFI_HOME>\nifi\nifi-2.7.2\lib\
 ```
 
 Example full path:
 ```
-C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\lib\mysql-connector-j-9.6.0.jar
+<NIFI_HOME>\nifi\nifi-2.7.2\lib\mysql-connector-j-9.6.0.jar
 ```
 
 #### Step 3 — Restart NiFi
@@ -437,7 +437,7 @@ Right-click **PutFile** → Configure → Properties:
 
 - Directory:
   ```
-  C:\Users\Lenovo\Documents\Program Projects\EDUCLASS\MODULE 15 Data Engineering\COURSEWORK\CW1\Project\nifi
+  <PROJECT_ROOT>\nifi
   ```
 - Create Missing Directories = `true`
 - Conflict Resolution Strategy = `replace` (recommended during testing)
@@ -482,7 +482,7 @@ Open the controller service and set:
   ```
 - Database Driver Location(s):
   ```
-  C:\Users\Lenovo\Desktop\nifi\nifi-2.7.2\lib\mysql-connector-j-9.6.0.jar
+  <NIFI_HOME>\nifi-2.7.2\lib\mysql-connector-j-9.6.0.jar
   ```
 - Database User:
   ```
@@ -527,7 +527,7 @@ Start (play button) in this order:
 #### Output check
 Open:
 ```
-.\nifi\
+<PROJECT_ROOT>\nifi
 ```
 
 You should see files like:
